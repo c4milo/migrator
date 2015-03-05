@@ -6,5 +6,11 @@ go:
   - 1.4
   - tip
 
+before_install:
+  - go get github.com/lib/pq
+
 addons:
   postgresql: "9.4"
+
+script:
+ - go test -tags postgres -v ./...
