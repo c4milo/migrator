@@ -9,6 +9,7 @@ go:
 
 before_install:
   - go get github.com/lib/pq
+  - go get github.com/hooklift/assert
 
 addons:
   postgresql: "9.4"
