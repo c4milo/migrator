@@ -1,17 +1,10 @@
-go_build: -tags postgres
 language: go
 
 go:
-  - 1.2
   - 1.3
   - 1.4
   - tip
 
-before_install:
-  - go get github.com/lib/pq
-  - go get github.com/hooklift/assert
-
+install: make deps
 addons:
   postgresql: "9.4"
-
-

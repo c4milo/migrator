@@ -71,6 +71,26 @@ func (fi bindata_file_info) Sys() interface{} {
 	return nil
 }
 
+var _migrations_migrations_go = "\x1f\x8b\x08\x00\x00\x09\x6e\x88\x00\xff\x01\x00\x00\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00"
+
+func migrations_migrations_go_bytes() ([]byte, error) {
+	return bindata_read(
+		_migrations_migrations_go,
+		"migrations/migrations.go",
+	)
+}
+
+func migrations_migrations_go() (*asset, error) {
+	bytes, err := migrations_migrations_go_bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindata_file_info{name: "migrations/migrations.go", size: 0, mode: os.FileMode(420), modTime: time.Unix(1425517563, 0)}
+	a := &asset{bytes: bytes, info:  info}
+	return a, nil
+}
+
 var _migrations_postgres_0001_create_index_function_if_not_exists_down_sql = "\x1f\x8b\x08\x00\x00\x09\x6e\x88\x00\xff\x54\xca\x41\x0a\x80\x30\x0c\x44\xd1\xab\x64\xa9\xe0\x0d\x3c\x4c\x28\x6d\x0a\x03\x9a\x6a\x3b\x42\x8e\x2f\x14\x37\x2e\x1f\xff\x97\xde\x2e\xa9\x8f\x67\xa2\xb9\xa0\x8a\x05\x06\x87\xe4\x6e\x89\xa6\xf0\x62\xa1\xa8\xea\x8d\xfa\xa5\x85\xea\xe9\x34\xa1\x05\x37\xc1\x0f\x73\x1f\xf7\x31\xbd\xee\x6f\x00\x00\x00\xff\xff\x77\x74\xd0\xd5\x5e\x00\x00\x00"
 
 func migrations_postgres_0001_create_index_function_if_not_exists_down_sql_bytes() ([]byte, error) {
@@ -86,7 +106,7 @@ func migrations_postgres_0001_create_index_function_if_not_exists_down_sql() (*a
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0001_create-index-function-if-not-exists_down.sql", size: 94, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0001_create-index-function-if-not-exists_down.sql", size: 94, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -106,7 +126,7 @@ func migrations_postgres_0001_create_index_function_if_not_exists_up_sql() (*ass
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0001_create-index-function-if-not-exists_up.sql", size: 654, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0001_create-index-function-if-not-exists_up.sql", size: 654, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -126,7 +146,7 @@ func migrations_postgres_0002_create_extension_citext_down_sql() (*asset, error)
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0002_create-extension-citext_down.sql", size: 60, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0002_create-extension-citext_down.sql", size: 60, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -146,7 +166,7 @@ func migrations_postgres_0002_create_extension_citext_up_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0002_create-extension-citext_up.sql", size: 64, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0002_create-extension-citext_up.sql", size: 64, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -166,7 +186,7 @@ func migrations_postgres_0003_create_accounts_table_down_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0003_create-accounts-table_down.sql", size: 106, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0003_create-accounts-table_down.sql", size: 106, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -186,7 +206,7 @@ func migrations_postgres_0003_create_accounts_table_up_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0003_create-accounts-table_up.sql", size: 1557, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0003_create-accounts-table_up.sql", size: 1557, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -206,7 +226,7 @@ func migrations_postgres_0004_create_scopes_table_down_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0004_create-scopes-table_down.sql", size: 28, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0004_create-scopes-table_down.sql", size: 28, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -226,7 +246,7 @@ func migrations_postgres_0004_create_scopes_table_up_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0004_create-scopes-table_up.sql", size: 454, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0004_create-scopes-table_up.sql", size: 454, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -246,7 +266,7 @@ func migrations_postgres_0005_create_clients_table_down_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0005_create-clients-table_down.sql", size: 29, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0005_create-clients-table_down.sql", size: 29, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -266,7 +286,7 @@ func migrations_postgres_0005_create_clients_table_up_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0005_create-clients-table_up.sql", size: 1005, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0005_create-clients-table_up.sql", size: 1005, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -286,7 +306,7 @@ func migrations_postgres_0006_create_grants_table_down_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0006_create-grants-table_down.sql", size: 103, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0006_create-grants-table_down.sql", size: 103, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -306,7 +326,7 @@ func migrations_postgres_0006_create_grants_table_up_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0006_create-grants-table_up.sql", size: 1428, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0006_create-grants-table_up.sql", size: 1428, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -326,7 +346,7 @@ func migrations_postgres_0007_create_tokens_table_down_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0007_create-tokens-table_down.sql", size: 106, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0007_create-tokens-table_down.sql", size: 106, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -346,7 +366,7 @@ func migrations_postgres_0007_create_tokens_table_up_sql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindata_file_info{name: "migrations/postgres/0007_create-tokens-table_up.sql", size: 1573, mode: os.FileMode(420), modTime: time.Unix(1425500624, 0)}
+	info := bindata_file_info{name: "migrations/postgres/0007_create-tokens-table_up.sql", size: 1573, mode: os.FileMode(420), modTime: time.Unix(1425515484, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -392,6 +412,7 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
+	"migrations/migrations.go": migrations_migrations_go,
 	"migrations/postgres/0001_create-index-function-if-not-exists_down.sql": migrations_postgres_0001_create_index_function_if_not_exists_down_sql,
 	"migrations/postgres/0001_create-index-function-if-not-exists_up.sql": migrations_postgres_0001_create_index_function_if_not_exists_up_sql,
 	"migrations/postgres/0002_create-extension-citext_down.sql": migrations_postgres_0002_create_extension_citext_down_sql,
@@ -449,6 +470,8 @@ type _bintree_t struct {
 }
 var _bintree = &_bintree_t{nil, map[string]*_bintree_t{
 	"migrations": &_bintree_t{nil, map[string]*_bintree_t{
+		"migrations.go": &_bintree_t{migrations_migrations_go, map[string]*_bintree_t{
+		}},
 		"postgres": &_bintree_t{nil, map[string]*_bintree_t{
 			"0001_create-index-function-if-not-exists_down.sql": &_bintree_t{migrations_postgres_0001_create_index_function_if_not_exists_down_sql, map[string]*_bintree_t{
 			}},
