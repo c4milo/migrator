@@ -12,5 +12,4 @@ before_install:
 addons:
   postgresql: "9.4"
 
-script:
- - go test -tags postgres -v ./...
+go_build: -tags postgres
