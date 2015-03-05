@@ -2,6 +2,8 @@
 // License, version 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+// +build postgres
+
 package migrator
 
 import (
@@ -39,9 +41,9 @@ func (p *postgres) Init() error {
 		do $$
 		begin
 			if not exists (select 1 from pg_type where typname = 'migration_status_type') then
-        		create type migration_status_type as enum ('up', 'down');
-    		end if;
-    	end$$;
+				create type migration_status_type as enum ('up', 'down');
+			end if;
+		end$$;
 		-- creates citext extension
 		create extension if not exists citext;
 
