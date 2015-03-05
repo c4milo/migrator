@@ -6,3 +6,6 @@ Opinionated database migration library for Go applications.
 
 ### Supported databases
 * Postgres
+
+
+When building your project using this library, make sure  you pass build tags to compile only the driver you want to use. Example: `go build -tags postgres` or `go test -tags postgres`
