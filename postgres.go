@@ -110,7 +110,7 @@ func (p *postgres) MigrateFromAsset(assetFunc AssetFunc, assetDirFunc AssetDirFu
 	for i := 0; i < len(files); i++ {
 		f := files[i]
 		// File names should be formatted like so: id_migration-name_up.sql or
-		// id_migration-name_down.sql. Ex: 0002_create_extension_citext_down.sql
+		// id_migration-name_down.sql. Ex: 0002_create-extension-citext_down.sql
 		parts := strings.Split(f, "_")
 		if len(parts) != 3 {
 			log.Printf("[ERROR] Bad file format: %s", f)
