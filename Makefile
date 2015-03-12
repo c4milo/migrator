@@ -1,5 +1,5 @@
 test:
-	go test -v -tags postgres ./...
+	go test -v -tags postgres -cover ./...
 
 generate:
 	go generate
