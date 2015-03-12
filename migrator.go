@@ -52,6 +52,10 @@ type Migrator interface {
 	Rollback(n ...uint) error
 	// Migrations returns the list of migrations currently applied to the database.
 	Migrations(ids ...string) ([]*Migration, error)
+	// Up applies a specific migration version.
+	Up(version string) error
+	// Down rolls back or takes down a specific migration version.
+	Down(version string) error
 }
 
 // Migration represents an actual migration file.
@@ -63,6 +67,7 @@ type Migration struct {
 	Down      string
 	Status    string
 	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 const baseDir string = "migrations/postgres"

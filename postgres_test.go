@@ -196,3 +196,30 @@ func TestMigrations(t *testing.T) {
 	assert.Ok(t, err)
 	assert.Equals(t, 7, len(ms))
 }
+
+func TestUpDown(t *testing.T) {
+	m, err := NewMigrator(db, Postgres, migrations.Asset, migrations.AssetDir)
+	assert.Ok(t, err)
+
+	err = m.Init()
+	assert.Ok(t, err)
+
+	err = m.Migrate()
+	assert.Ok(t, err)
+
+	err = m.Down("0007")
+	assert.Ok(t, err)
+
+	wor2 := db.QueryRow("select to_regclass('tokens')")
+	var tt2 string
+	wor2.Scan(&tt2)
+	assert.Equals(t, "", tt2)
+
+	err = m.Up("0007")
+	assert.Ok(t, err)
+
+	wor := db.QueryRow("select to_regclass('tokens')")
+	var tt string
+	wor.Scan(&tt)
+	assert.Equals(t, "tokens", tt)
+}

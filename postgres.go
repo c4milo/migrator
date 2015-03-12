@@ -25,6 +25,9 @@ var (
 	ErrRollbackFailed       = errors.New("error-rolling-back-migrations")
 	ErrUpdatingMigration    = errors.New("error-updating-migration-metadata")
 	ErrRedoFailed           = errors.New("redo-error")
+	ErrMigrationNotFound    = errors.New("migration-not-found")
+	ErrMigrationIDrequired  = errors.New("migration-id-required")
+	ErrDownFailed           = errors.New("migration-down-failed")
 )
 
 type postgres struct {
@@ -68,14 +71,17 @@ func (p *postgres) Init() error {
 			down          text   not null,
 			-- status of this migration
 			status        migration_status_type,
-			-- timestamp of when the grant was created.
+			-- timestamp of when the migration was created.
 			created_at    timestamptz not null default current_timestamp,
+			-- timestamp of when the migration was updated.
+			updated_at    timestamptz not null,
 
 			primary key (id)
 		);
 	`)
 
 	if err != nil {
+		debug.PrintStack()
 		log.Printf("[ERROR] %#v", err)
 		return ErrCreatingTable
 	}
@@ -83,149 +89,63 @@ func (p *postgres) Init() error {
 	return nil
 }
 
-// isApplied checks whether the migration was already applied or not
-func (p *postgres) isApplied(id string) (applied, exist bool, err error) {
-	var status string
-	row := p.db.QueryRow(`SELECT status FROM schema_migrations WHERE id = $1`, id)
-	err = row.Scan(&status)
-	if err != nil {
-		if sql.ErrNoRows == err {
-			return false, false, nil
-		}
-
-		return false, false, err
+// Up re-applies the specific migration ID only if the migration exists and has
+// status "down"
+func (p *postgres) Up(id string) error {
+	ms, err := p.Migrations(id)
+	exists := len(ms) > 0
+	if !exists {
+		return ErrMigrationNotFound
 	}
 
-	if status == "up" {
-		return true, true, nil
-	}
+	m := ms[0]
 
-	return false, true, nil
-}
-
-func (p *postgres) Redo(steps ...uint) error {
-	n := uint(1)
-	if len(steps) > 0 {
-		n = steps[0]
-	}
-
-	l := len(p.paths)
-	numMigrations := uint(l / 2)
-
-	if n > numMigrations {
-		n = numMigrations
-	}
-
-	if err := p.Rollback(n); err != nil {
-		return err
-	}
-
-	if err := p.Migrate(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *postgres) Migrate() error {
-	for i := 0; i < len(p.paths); i++ {
-		f := p.paths[i]
-
-		if strings.HasSuffix(f, "down.sql") {
-			continue
-		}
-
-		m, err := DecodeFile(f, p.assetFunc)
-		if err != nil {
-			return err
-		}
-
-		if m.Up == "" {
-			// keeps going until we find an "up" SQL file.
-			continue
-		}
-
-		if err := p.migrate(m, nil); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (p *postgres) migrate(m *Migration, currTx *sql.Tx) error {
-	tx := currTx
-	if tx == nil {
-		var err error
-		tx, err = p.db.Begin()
-		if err != nil {
-			log.Printf("[ERROR] %#v", err)
-			return ErrMigrationFailed
-		}
-	}
-
-	applied, exists, err := p.isApplied(m.ID)
-	if err != nil {
-		log.Printf("[ERROR] %#v", err)
-		return ErrMigrationFailed
-	}
-
-	if applied {
+	if m.Status == "up" {
 		return nil
 	}
 
-	if _, err := tx.Exec(m.Up); err != nil {
+	tx, err := p.db.Begin()
+	if err != nil {
+		debug.PrintStack()
 		log.Printf("[ERROR] %#v", err)
-		log.Printf("[ERROR] %s", m.Up)
-		tx.Rollback()
 		return ErrMigrationFailed
 	}
 
-	if !exists {
-		if _, err := tx.Exec(`
-			INSERT INTO schema_migrations (
-				id, name, filename, up, down, status, created_at
-			) VALUES ($1, $2, $3, $4, $5, $6, now());
-		`, m.ID, m.Name, m.Filename, m.Up, m.Down, "up"); err != nil {
-			log.Printf("[ERROR] %#v", err)
-			tx.Rollback()
-			return ErrRegisteringMigration
-		}
-	} else {
-		if _, err := tx.Exec(`
-			UPDATE schema_migrations
-			SET    status = $1
-			WHERE  id = $2`, "up", m.ID); err != nil {
-			log.Printf("[ERROR] %#v", err)
-			tx.Rollback()
-			return ErrUpdatingMigration
-		}
+	if _, err := tx.Exec(`DELETE FROM schema_migrations WHERE id = $1`, id); err != nil {
+		tx.Rollback()
+		return err
 	}
 
-	if err := tx.Commit(); err != nil {
+	newM, err := DecodeFile(m.Filename, p.assetFunc)
+	if err != nil {
+		debug.PrintStack()
 		log.Printf("[ERROR] %#v", err)
 		tx.Rollback()
 		return ErrMigrationFailed
 	}
 
-	return nil
+	return p.migrate(newM, tx)
 }
 
-func (p *postgres) Rollback(steps ...uint) error {
-	n := uint(1)
-	if len(steps) > 0 {
-		n = steps[0]
+func (p *postgres) Down(id string) error {
+	if id == "" {
+		return ErrMigrationIDrequired
 	}
 
 	migrations, err := p.db.Query(`
 		SELECT id, down FROM schema_migrations
 		WHERE status = 'up'
-		ORDER BY id DESC LIMIT $1`, n)
+		AND   id = $1`, id)
 	if err != nil {
 		log.Printf("[ERROR] %#v", err)
-		return ErrRollbackFailed
+		return ErrDownFailed
 	}
 	defer migrations.Close()
 
+	return p.rollback(migrations)
+}
+
+func (p *postgres) rollback(migrations *sql.Rows) error {
 	for migrations.Next() {
 		var id, downSQL string
 		if err := migrations.Scan(&id, &downSQL); err != nil {
@@ -263,16 +183,139 @@ func (p *postgres) Rollback(steps ...uint) error {
 		}
 	}
 
-	if err = migrations.Err(); err != nil {
+	if err := migrations.Err(); err != nil {
 		log.Printf("[ERROR] %#v", err)
 		return ErrRollbackFailed
 	}
 	return nil
 }
 
+func (p *postgres) Redo(steps ...uint) error {
+	n := uint(1)
+	if len(steps) > 0 {
+		n = steps[0]
+	}
+
+	l := len(p.paths)
+	numMigrations := uint(l / 2)
+
+	if n > numMigrations {
+		n = numMigrations
+	}
+
+	if err := p.Rollback(n); err != nil {
+		return err
+	}
+
+	if err := p.Migrate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *postgres) Rollback(steps ...uint) error {
+	n := uint(1)
+	if len(steps) > 0 {
+		n = steps[0]
+	}
+
+	migrations, err := p.db.Query(`
+		SELECT id, down FROM schema_migrations
+		WHERE status = 'up'
+		ORDER BY id DESC LIMIT $1`, n)
+	if err != nil {
+		log.Printf("[ERROR] %#v", err)
+		return ErrRollbackFailed
+	}
+	defer migrations.Close()
+
+	return p.rollback(migrations)
+}
+
+func (p *postgres) Migrate() error {
+	for i := 0; i < len(p.paths); i++ {
+		f := p.paths[i]
+
+		if strings.HasSuffix(f, "down.sql") {
+			continue
+		}
+
+		m, err := DecodeFile(f, p.assetFunc)
+		if err != nil {
+			return err
+		}
+
+		if err := p.migrate(m, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *postgres) migrate(m *Migration, currTx *sql.Tx) error {
+	tx := currTx
+	if tx == nil {
+		var err error
+		tx, err = p.db.Begin()
+		if err != nil {
+			log.Printf("[ERROR] %#v", err)
+			return ErrMigrationFailed
+		}
+	}
+
+	ms, err := p.Migrations(m.ID)
+	if err != nil {
+		log.Printf("[ERROR] %#v", err)
+		return ErrMigrationFailed
+	}
+
+	exists := len(ms) > 0
+
+	if exists && ms[0].Status == "up" {
+		return nil
+	}
+
+	if _, err := tx.Exec(m.Up); err != nil {
+		log.Printf("[ERROR] %#v", err)
+		log.Printf("[ERROR] %s", m.Up)
+		tx.Rollback()
+		return ErrMigrationFailed
+	}
+
+	if !exists {
+		if _, err := tx.Exec(`
+			INSERT INTO schema_migrations (
+				id, name, filename, up, down, status, created_at, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, now(), $7);
+		`, m.ID, m.Name, m.Filename, m.Up, m.Down, "up", m.UpdatedAt); err != nil {
+			log.Printf("[ERROR] %#v", err)
+			tx.Rollback()
+			return ErrRegisteringMigration
+		}
+	} else {
+		if _, err := tx.Exec(`
+			UPDATE schema_migrations
+			SET    status = $1, up = $2, down = $3, updated_at = now()
+			WHERE  id = $4`, "up", m.Up, m.Down, m.ID); err != nil {
+			log.Printf("[ERROR] %#v", err)
+			tx.Rollback()
+			return ErrUpdatingMigration
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("[ERROR] %#v", err)
+		tx.Rollback()
+		return ErrMigrationFailed
+	}
+
+	return nil
+}
+
 func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
 	query := `
-		SELECT id, name, filename, up, down, status, created_at
+		SELECT id, name, filename, up, down, status, created_at, updated_at
 		FROM schema_migrations
 	`
 
@@ -280,7 +323,7 @@ func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
 	if hasIDs {
 		query += ` WHERE id IN (`
 		for i := range IDs {
-			query += fmt.Sprintf("$%d,", i)
+			query += fmt.Sprintf("$%d,", i+1)
 		}
 		query = strings.TrimSuffix(query, ",")
 		query += `)`
@@ -291,7 +334,13 @@ func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
 	var err error
 	var rows *sql.Rows
 	if hasIDs {
-		rows, err = p.db.Query(query, IDs)
+		// This is so unfortunate
+		new := make([]interface{}, len(IDs))
+		for i, v := range IDs {
+			new[i] = interface{}(v)
+		}
+		//log.Printf("%s", query)
+		rows, err = p.db.Query(query, new...)
 	} else {
 		rows, err = p.db.Query(query)
 	}
@@ -306,9 +355,9 @@ func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
 	migrations := make([]*Migration, 0)
 	for rows.Next() {
 		var id, name, filename, up, down, status string
-		var createdAt time.Time
+		var createdAt, updatedAt time.Time
 
-		rows.Scan(&id, &name, &filename, &up, &down, &status, &createdAt)
+		rows.Scan(&id, &name, &filename, &up, &down, &status, &createdAt, &updatedAt)
 		m := new(Migration)
 		m.ID = id
 		m.Name = name
@@ -317,6 +366,7 @@ func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
 		m.Down = down
 		m.Status = status
 		m.CreatedAt = createdAt
+		m.UpdatedAt = updatedAt
 
 		migrations = append(migrations, m)
 	}
