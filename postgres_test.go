@@ -112,14 +112,14 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestMigrateFromAsset(t *testing.T) {
-	m, err := NewMigrator(db, Postgres)
+func TestMigrate(t *testing.T) {
+	m, err := NewMigrator(db, Postgres, migrations.Asset, migrations.AssetDir)
 	assert.Ok(t, err)
 
 	err = m.Init()
 	assert.Ok(t, err)
 
-	err = m.MigrateFromAsset(migrations.Asset, migrations.AssetDir)
+	err = m.Migrate()
 	assert.Ok(t, err)
 
 	row := db.QueryRow("select count(*) from schema_migrations")
@@ -128,8 +128,25 @@ func TestMigrateFromAsset(t *testing.T) {
 	assert.Equals(t, 7, tm)
 }
 
+func TestRedo(t *testing.T) {
+	m, err := NewMigrator(db, Postgres, migrations.Asset, migrations.AssetDir)
+	assert.Ok(t, err)
+
+	err = m.Init()
+	assert.Ok(t, err)
+
+	err = m.Migrate()
+	assert.Ok(t, err)
+
+	err = m.Redo()
+	assert.Ok(t, err)
+
+	err = m.Redo(3)
+	assert.Ok(t, err)
+}
+
 func TestRollback(t *testing.T) {
-	m, err := NewMigrator(db, Postgres)
+	m, err := NewMigrator(db, Postgres, migrations.Asset, migrations.AssetDir)
 	assert.Ok(t, err)
 
 	wor := db.QueryRow("select to_regclass('tokens')")
@@ -151,7 +168,7 @@ func TestRollback(t *testing.T) {
 	wor2.Scan(&tt2)
 	assert.Equals(t, "", tt2)
 
-	TestMigrateFromAsset(t)
+	TestMigrate(t)
 
 	row2 := db.QueryRow("select count(*) from schema_migrations where status=$1", "down")
 	var tm2 int
@@ -163,7 +180,7 @@ func TestRollback(t *testing.T) {
 	row3.Scan(&tm3)
 	assert.Equals(t, 7, tm3)
 
-	err = m.RollbackN(3)
+	err = m.Rollback(3)
 	row4 := db.QueryRow("select count(*) from schema_migrations where status=$1", "down")
 
 	var tm4 int
@@ -172,7 +189,7 @@ func TestRollback(t *testing.T) {
 }
 
 func TestMigrations(t *testing.T) {
-	m, err := NewMigrator(db, Postgres)
+	m, err := NewMigrator(db, Postgres, migrations.Asset, migrations.AssetDir)
 	assert.Ok(t, err)
 
 	ms, err := m.Migrations()

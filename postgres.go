@@ -9,9 +9,9 @@ package migrator
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
-	"path/filepath"
-	"sort"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -20,19 +20,26 @@ import (
 
 var (
 	ErrCreatingTable        = errors.New("error-creating-migration-table")
-	ErrMigrationFailed      = errors.New("migration-failed")
 	ErrRegisteringMigration = errors.New("error-registering-migration")
 	ErrGettingMigrations    = errors.New("error-getting-migrations")
 	ErrRollbackFailed       = errors.New("error-rolling-back-migrations")
 	ErrUpdatingMigration    = errors.New("error-updating-migration-metadata")
+	ErrRedoFailed           = errors.New("redo-error")
 )
 
 type postgres struct {
-	db *sql.DB
+	db           *sql.DB
+	paths        []string
+	assetFunc    AssetFunc
+	assetDirFunc AssetDirFunc
 }
 
-func NewPostgres(db *sql.DB) *postgres {
-	return &postgres{db: db}
+func NewPostgres(db *sql.DB, paths []string, assetFunc AssetFunc) (*postgres, error) {
+	return &postgres{
+		db:        db,
+		paths:     paths,
+		assetFunc: assetFunc,
+	}, nil
 }
 
 func (p *postgres) Init() error {
@@ -96,67 +103,64 @@ func (p *postgres) isApplied(id string) (applied, exist bool, err error) {
 	return false, true, nil
 }
 
-func (p *postgres) MigrateFromAsset(assetFunc AssetFunc, assetDirFunc AssetDirFunc) error {
-	baseDir := "migrations/postgres"
-	files, err := assetDirFunc(baseDir)
-	if err != nil {
-		log.Printf("[ERROR] trying to get list of migration files from embedded asset directory %s", baseDir)
-		log.Printf("[ERROR] %#v", err)
-		return ErrMigrationFailed
+func (p *postgres) Redo(steps ...uint) error {
+	n := uint(1)
+	if len(steps) > 0 {
+		n = steps[0]
 	}
 
-	sort.Strings(files)
+	l := len(p.paths)
+	numMigrations := uint(l / 2)
 
-	for i := 0; i < len(files); i++ {
-		f := files[i]
-		// File names should be formatted like so: id_migration-name_up.sql or
-		// id_migration-name_down.sql. Ex: 0002_create-extension-citext_down.sql
-		parts := strings.Split(f, "_")
-		if len(parts) != 3 {
-			log.Printf("[ERROR] Bad file format: %s", f)
-			return ErrBadFilenameFormat
-		}
+	if n > numMigrations {
+		n = numMigrations
+	}
 
-		m := new(Migration)
-		m.ID = parts[0]
-		m.Name = parts[1]
-		m.Filename = f
+	if err := p.Rollback(n); err != nil {
+		return err
+	}
 
-		if parts[2] != "up.sql" {
+	if err := p.Migrate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *postgres) Migrate() error {
+	for i := 0; i < len(p.paths); i++ {
+		f := p.paths[i]
+
+		if strings.HasSuffix(f, "down.sql") {
 			continue
 		}
 
-		upFile := filepath.Join(baseDir, f)
-		upSQL, err := assetFunc(upFile)
+		m, err := DecodeFile(f, p.assetFunc)
 		if err != nil {
-			log.Printf("[ERROR] Extracting asset content from %s", upFile)
-			log.Printf("[ERROR] %#v", err)
-			return ErrMigrationFailed
+			return err
 		}
 
-		downFile := filepath.Join(baseDir, strings.Replace(f, "up.sql", "down.sql", 1))
-		downSQL, err := assetFunc(downFile)
-		if err != nil {
-			log.Printf("[ERROR] Extracting asset content from %s", downFile)
-			log.Printf("[ERROR] %#v", err)
-			return ErrMigrationFailed
+		if m.Up == "" {
+			// keeps going until we find an "up" SQL file.
+			continue
 		}
 
-		m.Up = string(upSQL[:])
-		m.Down = string(downSQL[:])
-
-		if err := p.migrate(m); err != nil {
+		if err := p.migrate(m, nil); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (p *postgres) migrate(m *Migration) error {
-	tx, err := p.db.Begin()
-	if err != nil {
-		log.Printf("[ERROR] %#v", err)
-		return ErrMigrationFailed
+func (p *postgres) migrate(m *Migration, currTx *sql.Tx) error {
+	tx := currTx
+	if tx == nil {
+		var err error
+		tx, err = p.db.Begin()
+		if err != nil {
+			log.Printf("[ERROR] %#v", err)
+			return ErrMigrationFailed
+		}
 	}
 
 	applied, exists, err := p.isApplied(m.ID)
@@ -206,11 +210,12 @@ func (p *postgres) migrate(m *Migration) error {
 	return nil
 }
 
-func (p *postgres) Rollback() error {
-	return p.RollbackN(1)
-}
+func (p *postgres) Rollback(steps ...uint) error {
+	n := uint(1)
+	if len(steps) > 0 {
+		n = steps[0]
+	}
 
-func (p *postgres) RollbackN(n uint) error {
 	migrations, err := p.db.Query(`
 		SELECT id, down FROM schema_migrations
 		WHERE status = 'up'
@@ -265,16 +270,39 @@ func (p *postgres) RollbackN(n uint) error {
 	return nil
 }
 
-func (p *postgres) Migrations() ([]*Migration, error) {
-	rows, err := p.db.Query(`
+func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
+	query := `
 		SELECT id, name, filename, up, down, status, created_at
 		FROM schema_migrations
-	`)
+	`
+
+	hasIDs := len(IDs) > 0
+	if hasIDs {
+		query += ` WHERE id IN (`
+		for i := range IDs {
+			query += fmt.Sprintf("$%d,", i)
+		}
+		query = strings.TrimSuffix(query, ",")
+		query += `)`
+	}
+
+	query += ` ORDER by id DESC `
+
+	var err error
+	var rows *sql.Rows
+	if hasIDs {
+		rows, err = p.db.Query(query, IDs)
+	} else {
+		rows, err = p.db.Query(query)
+	}
+
 	if err != nil {
+		debug.PrintStack()
 		log.Printf("[ERROR] %#v", err)
 		return nil, ErrGettingMigrations
 	}
 	defer rows.Close()
+
 	migrations := make([]*Migration, 0)
 	for rows.Next() {
 		var id, name, filename, up, down, status string
@@ -294,6 +322,7 @@ func (p *postgres) Migrations() ([]*Migration, error) {
 	}
 
 	if err = rows.Err(); err != nil {
+		debug.PrintStack()
 		log.Printf("[ERROR] %#v", err)
 		return nil, ErrGettingMigrations
 	}
