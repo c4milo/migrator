@@ -46,7 +46,7 @@ type Migrator interface {
 	// Migrate applies all migrations that hasn't been applied.
 	Migrate() error
 	// Redo undos specific migrations and applies them again. By default
-	// if not parameter is specified, it will redo the latest migration.
+	// if no parameter is specified, it will redo the latest migration.
 	Redo(n ...uint) error
 	// Rollback reverts the last migration if not parameter is specified.
 	Rollback(n ...uint) error
