@@ -47,7 +47,7 @@ func NewPostgres(db *sql.DB, paths []string, assetFunc AssetFunc) (*postgres, er
 
 func (p *postgres) Init() error {
 	_, err := p.db.Exec(`
-		-- creates an enum type for OAuth2 token types
+		-- creates an enum type for migration status types
 		do $$
 		begin
 			if not exists (select 1 from pg_type where typname = 'migration_status_type') then
