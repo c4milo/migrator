@@ -19,15 +19,25 @@ import (
 )
 
 var (
-	ErrCreatingTable        = errors.New("error-creating-migration-table")
+	// ErrCreatingTable is returned when creating the migration table fails.
+	ErrCreatingTable = errors.New("error-creating-migration-table")
+	// ErrRegisteringMigration is returned when inserting an entry into the migration table fails.
 	ErrRegisteringMigration = errors.New("error-registering-migration")
-	ErrGettingMigrations    = errors.New("error-getting-migrations")
-	ErrRollbackFailed       = errors.New("error-rolling-back-migrations")
-	ErrUpdatingMigration    = errors.New("error-updating-migration-metadata")
-	ErrRedoFailed           = errors.New("redo-error")
-	ErrMigrationNotFound    = errors.New("migration-not-found")
-	ErrMigrationIDrequired  = errors.New("migration-id-required")
-	ErrDownFailed           = errors.New("migration-down-failed")
+	// ErrGettingMigrations is returned when querying the migrations table fails.
+	ErrGettingMigrations = errors.New("error-getting-migrations")
+	// ErrRollbackFailed is returned if rolling back an actual migration fails.
+	ErrRollbackFailed = errors.New("error-rolling-back-migrations")
+	// ErrUpdatingMigration is returned when updating migration metadata fails.
+	ErrUpdatingMigration = errors.New("error-updating-migration-metadata")
+	// ErrRedoFailed is returned if redoing a migration fails for some reason.
+	ErrRedoFailed = errors.New("redo-error")
+	// ErrMigrationNotFound is returned when a migration was not found in the internal
+	// migrations table.
+	ErrMigrationNotFound = errors.New("migration-not-found")
+	// ErrMigrationIDrequired is returned if a migration is attempted to be created without an ID.
+	ErrMigrationIDrequired = errors.New("migration-id-required")
+	// ErrDownFailed is returned when taking down a migration fails.
+	ErrDownFailed = errors.New("migration-down-failed")
 )
 
 type postgres struct {
@@ -37,6 +47,7 @@ type postgres struct {
 	assetDirFunc AssetDirFunc
 }
 
+// NewPostgres creates Postgres migrator
 func NewPostgres(db *sql.DB, paths []string, assetFunc AssetFunc) (*postgres, error) {
 	return &postgres{
 		db:        db,
@@ -45,6 +56,7 @@ func NewPostgres(db *sql.DB, paths []string, assetFunc AssetFunc) (*postgres, er
 	}, nil
 }
 
+// Init initializes the migration table.
 func (p *postgres) Init() error {
 	_, err := p.db.Exec(`
 		-- creates an enum type for migration status types
@@ -54,6 +66,7 @@ func (p *postgres) Init() error {
 				create type migration_status_type as enum ('up', 'down');
 			end if;
 		end$$;
+
 		-- creates citext extension
 		create extension if not exists citext;
 
@@ -127,6 +140,7 @@ func (p *postgres) Up(id string) error {
 	return p.migrate(newM, tx)
 }
 
+// Down takes down the migration identified by the given ID.
 func (p *postgres) Down(id string) error {
 	if id == "" {
 		return ErrMigrationIDrequired
@@ -190,6 +204,7 @@ func (p *postgres) rollback(migrations *sql.Rows) error {
 	return nil
 }
 
+// Redo re-runs a given number of latests migrations.
 func (p *postgres) Redo(steps ...uint) error {
 	n := uint(1)
 	if len(steps) > 0 {
@@ -214,6 +229,7 @@ func (p *postgres) Redo(steps ...uint) error {
 	return nil
 }
 
+// Rollback removes a given number of latests migrations.
 func (p *postgres) Rollback(steps ...uint) error {
 	n := uint(1)
 	if len(steps) > 0 {
@@ -253,6 +269,7 @@ func (p *postgres) Migrate() error {
 	return nil
 }
 
+// migrate implements the main migration process.
 func (p *postgres) migrate(m *Migration, currTx *sql.Tx) error {
 	tx := currTx
 	if tx == nil {
@@ -313,6 +330,7 @@ func (p *postgres) migrate(m *Migration, currTx *sql.Tx) error {
 	return nil
 }
 
+// Migrations returns information about a list of migration IDs.
 func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
 	query := `
 		SELECT id, name, filename, up, down, status, created_at, updated_at
@@ -352,7 +370,7 @@ func (p *postgres) Migrations(IDs ...string) ([]*Migration, error) {
 	}
 	defer rows.Close()
 
-	migrations := make([]*Migration, 0)
+	var migrations []*Migration
 	for rows.Next() {
 		var id, name, filename, up, down, status string
 		var createdAt, updatedAt time.Time
