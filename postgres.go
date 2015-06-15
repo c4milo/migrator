@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	// Loads Postgres driver
 	_ "github.com/lib/pq"
 )
 
