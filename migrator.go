@@ -70,8 +70,9 @@ type Migration struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-const baseDir string = "migrations/postgres"
+const baseDir string = ""
 
+// NewMigrator creates a new instance of the migration process, based on the database type provided.
 func NewMigrator(db *sql.DB, dbType DBType, assetFunc AssetFunc, assetDirFunc AssetDirFunc) (Migrator, error) {
 	if db == nil {
 		return nil, ErrInvalidDB
