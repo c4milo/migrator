@@ -114,7 +114,7 @@ func DecodeFile(f string, assetFunc AssetFunc) (*Migration, error) {
 	// id_migration-name_down.sql. Ex: 0002_create-extension-citext_down.sql
 	parts := strings.Split(f, "_")
 	if len(parts) != 3 {
-		log.Printf("[ERROR] Bad file format: %s", f)
+		log.Printf("[ERROR] Bad file format: %q", f)
 		return nil, ErrBadFilenameFormat
 	}
 
