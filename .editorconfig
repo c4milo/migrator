@@ -3,6 +3,7 @@ root = true
 ; Unix-style newlines with a newline ending every file
 [*]
 end_of_line = lf
+trim_trailing_whitespace = true
 insert_final_newline = true
 charset = utf-8
 
@@ -10,12 +11,8 @@ charset = utf-8
 [*.go, *.c, *.sql]
 indent_style = tab
 indent_size = 4
-trim_trailing_whitespace = true
-insert_final_newline = true
 
 ; YAML
 [*.yaml]
 indent_style = space
 indent_size = 2
-trim_trailing_whitespace = true
-insert_final_newline = true
