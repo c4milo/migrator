@@ -26,10 +26,11 @@ var (
 	ErrDBNotSupported = errors.New("database-not-supported")
 	// ErrInvalidDB is returned when a nil *sql.DB pointer is passed to NewMigrator
 	ErrInvalidDB = errors.New("invalid-database-handle")
-
+	// ErrMigrationFailed is returned when a migration failed to run
 	ErrMigrationFailed = errors.New("migration-failed")
 )
 
+// DBType defines a type for specifying the databasse to use during migration.
 type DBType string
 
 // Supported databases.
@@ -37,9 +38,13 @@ const (
 	Postgres DBType = "postgres"
 )
 
+// AssetFunc is the type that defines the function to access specific embedded files
 type AssetFunc func(path string) ([]byte, error)
+
+// AssetDirFunc is the type that defines the function to access specific embedded dirs
 type AssetDirFunc func(path string) ([]string, error)
 
+// Migrator defines the set of functions used by this package.
 type Migrator interface {
 	// Init initializes migrations table in the given database.
 	Init() error

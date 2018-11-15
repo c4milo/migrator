@@ -13,6 +13,7 @@ import (
 	"log"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	// Loads Postgres driver
@@ -42,6 +43,7 @@ var (
 )
 
 type postgres struct {
+	sync.Mutex
 	db           *sql.DB
 	paths        []string
 	assetFunc    AssetFunc
@@ -59,6 +61,8 @@ func NewPostgres(db *sql.DB, paths []string, assetFunc AssetFunc) (*postgres, er
 
 // Init initializes the migration table.
 func (p *postgres) Init() error {
+	p.Lock()
+	defer p.Unlock()
 	_, err := p.db.Exec(`
 		-- creates an enum type for migration status types
 		do $$
@@ -291,6 +295,7 @@ func (p *postgres) migrate(m *Migration, currTx *sql.Tx) error {
 	exists := len(ms) > 0
 
 	if exists && ms[0].Status == "up" {
+		tx.Rollback()
 		return nil
 	}
 
@@ -305,7 +310,7 @@ func (p *postgres) migrate(m *Migration, currTx *sql.Tx) error {
 		if _, err := tx.Exec(`
 			INSERT INTO schema_migrations (
 				id, name, filename, up, down, status, created_at, updated_at
-			) VALUES ($1, $2, $3, $4, $5, $6, now(), $7);
+			) VALUES ($1, $2, $3, $4, $5, $6, now(), $7) on conflict do nothing;
 		`, m.ID, m.Name, m.Filename, m.Up, m.Down, "up", m.UpdatedAt); err != nil {
 			log.Printf("[ERROR] %#v", err)
 			tx.Rollback()
